@@ -2,9 +2,9 @@
 #define INTERRUP_PIN 2
 #define INPUT3 7
 #define INPUT4 6
-#define KP 2
-#define KD 700 
-#define KI 0
+#define KP 7
+#define KD 2000
+#define KI 2
 #define PERIODO 5
 int period;
 char direccion;
@@ -12,6 +12,7 @@ int speet = 500;
 int pid;
 int period_previous = 0;
 boolean direccion_motor = 1;
+unsigned long time = 0;
 char terminal(){
   String data;
   static int velocidad;
@@ -92,17 +93,24 @@ void setup() {
 }
 
 void loop() {
-  /*direccion = terminal();
+  direccion = terminal();
   speet = setpoint(direccion, speet);
   pid = PID(speet, period);
   motor(pid, direccion_motor);
-  */
+  
   /*analogWrite(INPUT3, 220);
-  analogWrite(INPUT4, 0);
+  analogWrite(INPUT4, 0);*/
   if(period != period_previous){
     Serial.println(1000/period);
     period_previous = period;
-  }*/
-  speet = setpoint(terminal(), speet);
+  }
+  /*speet = setpoint(terminal(), speet);
   analogWrite(INPUT3, map(speet, 0, 1000, 0, 255));
+  digitalWrite(INPUT4, 0);*/
+  if( 1000 < millis() - time){
+    time = millis();
+    Serial.print("speet");
+    Serial.println(speet);
+  }
+
 }
