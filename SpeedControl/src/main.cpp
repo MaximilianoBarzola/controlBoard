@@ -20,10 +20,10 @@ char terminal(){
   if(Serial.available()){
     while(Serial.available() > 0){
       caracter = (char)Serial.read();
-      }
     }
-    return caracter; 
   }
+    return caracter; 
+}
   
 void encoder(){
   unsigned long time = millis();
