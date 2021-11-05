@@ -40,6 +40,7 @@
 #define S_TEMPSET 2
 #define S_ALARMAALTA 3
 #define S_ALARMABAJA 4
+#define TIEMPO_SIN_RED 1000
 int TempSet; //variable para almacenar el valor para escribir en pantalla
 int TempAct; //variable para almacenar el valor de la temperatura
 int TempAmb; //variable para almacenar el valor de la temperatura ambiente
@@ -57,7 +58,7 @@ uint8_t estado = S_INICIO;  // Estado inicial de la maquina de estados
 static long TiempoBateria = 0;  //variable para el inicio del cronometro
 static long TiempoSensor = 0;  //variable para el inicio del cronometro
 static long TiempoSalidas = 0;  //variable para el inicio del cronometro
-static long TiempoPuerta = 0;
+unsigned long TiempoPuerta = 0;
 static long TiempoBuzzer = 0;
 static long TiempoAlimentacion = 0;
 long Hora;
@@ -65,6 +66,7 @@ bool Pip = false;
 bool Light = false;
 bool valor = false;
 bool Red = false;
+boolean sinRed = false;
 ///***CREACION DE OBJETOS***///
 
 Adafruit_MAX31865 thermo = Adafruit_MAX31865(10);
@@ -96,13 +98,21 @@ void printINICIO() {
   float ratio = rtd;  //establece que ratio es flotante
   ratio /= 32768; //divide RTD por 32768 y lo nombra ratio
   lcd.setCursor(0, 0); // posiciona el cursor en columna 0 y fila 0
-  lcd.print("Temp Actual:"); lcd.print(TempAct); lcd.write(0); lcd.print("C");//escribe la temperatura
+  lcd.print("Temp Actual:");
+  lcd.setCursor(15,0); 
+  lcd.print(TempAct); lcd.write(0); lcd.print("C");//escribe la temperatura
   lcd.setCursor(0, 1); //posiciona el cursor en columna 0 y fila 1
-  lcd.print("Temp Seteo:"); lcd.print(EEPROM.get(0, TempSet)); lcd.write(0); lcd.print("C");//escribe el valor de seteo
+  lcd.print("Temp Seteo:");
+  lcd.setCursor(15,1); 
+  lcd.print(EEPROM.get(0, TempSet)); lcd.write(0); lcd.print("C");//escribe el valor de seteo
   lcd.setCursor(0, 2); //posiciona el cursor en columna 0 y fila 2
-  lcd.print("Bateria:"); lcd.print(EstadoCargaMap); lcd.print("%"); //escribe el valor de carga de la bateria
+  lcd.print("Bateria:");
+  lcd.setCursor(16,2); 
+  lcd.print(EstadoCargaMap); lcd.print("%"); //escribe el valor de carga de la bateria
   lcd.setCursor(0, 3); //posiciona el cursor en columna 0 y fila 3
-  lcd.print("Puerta:"); lcd.print(Situacion);  // escribe el estado de la puerta
+  lcd.print("Puerta:");
+  lcd.setCursor(12,3);
+  lcd.print(Situacion);  // escribe el estado de la puerta
   EEPROM.get(2, AlarmaAlta);
   EEPROM.get(4, AlarmaBaja);
   if (Hora - TiempoLCD > 5000) {
@@ -110,6 +120,7 @@ void printINICIO() {
     TiempoLCD = Hora;
   }
 }
+
 
 ///***FUNCION DE PANTALLA SECUNDARIA***///
 
@@ -219,6 +230,8 @@ void setup() {
   button_estate[2] = HIGH;  //define el estado por defecto como alto del boton up
   button_estate[3] = HIGH;  //define el estado por defecto como alto del boton down
   lcd.createChar(0, customChar);  //inicializa el caracter personalizado
+
+  TiempoPuerta = millis();  //actualizo la marca del tiempo asignada a la puerta
 }
 
 
@@ -230,32 +243,12 @@ void loop() {
 
   Hora = millis();
 
-  if (TempAct > AlarmaAlta) { //si la temperatura actual es mayor que la alarma de alta
-    digitalWrite(LedAlta, HIGH);  //enciende el led
-    if (Hora - TiempoBuzzer > 100) {  //cadencia del pitido por alta temperatura
-      Pitido(); //ejecuta la funcion
-      TiempoBuzzer = Hora;  //reinicia el cronometro
-    }
-  }
-  if (TempAct < AlarmaBaja) { //si la temperatura actual es menor que la alarma de baja
-    digitalWrite(LedBaja, HIGH); //enciende el led
-    if (Hora - TiempoBuzzer > 1000) { //cadencia del pitido por baja temperatura
-      Pitido(); //ejecuta la funcion
-      TiempoBuzzer = Hora;  //reinicia el cronometro
-    }
-  }
-  if (TempAct >= AlarmaBaja && TempAct <= AlarmaAlta) { //si la temperatura actual es mayor que la alarma de baja Y es menor que la alarma de alta
-    digitalWrite(LedAlta, LOW); //apaga el led de alta
-    digitalWrite(LedBaja, LOW); //apaga el led de baja
-  }
-  if (TempAct >= AlarmaBaja && TempAct <= AlarmaAlta && valor == LOW) { //si la temperatura actual es mayor que la alarma de baja Y es menor que la alarma de alta
-    digitalWrite(Buzzer, LOW);  //apaga el buzzer
-  }
-
+  
   ///***DETECCION DEL ESTADO DE LA PUERTA***///
 
   valor = digitalRead(Puerta);  // lee el estado del sensor de puerta
   if (valor == HIGH) {  // si esta alto
+  //cambiar nombre de variable situacion a estadoPuerta
     Situacion = "ABIERTA";  //graba en el string la palabra ABIERTA
     if (Hora - TiempoPuerta > 20000) {  //pasado este tiempo que la puerta esta abierta
       digitalWrite(Buzzer, HIGH); //activa el buzzer
@@ -269,11 +262,17 @@ void loop() {
   ///***ALARMA POR FALTA DE RED ELECTRICA***///
 
   Red = digitalRead(Alimentacion);  //lee la pata donde esta el optoacoplador
-  if (Red == HIGH && Hora - TiempoAlimentacion > 1000) {  //si esta alto y pasa 1 segundo
-    Backlight();  //ejecuta la funcion Backlight
-    TiempoAlimentacion = Hora;  //reinicia el cronometro
+  if ((Red == HIGH) && !sinRed){
+    sinRed = true;
+    TiempoAlimentacion = millis(); 
   }
-  else {
+  else if (Red==LOW){
+    sinRed = false;
+  }
+  if(sinRed && (Hora-TiempoAlimentacion)> TIEMPO_SIN_RED){
+    Backlight();  //ejecuta la funcion Backlight
+  }
+  else{
     lcd.backlight();  //si no, deja prendido el backlight
   }
   ///***LECTURA DE SENSORES SECUNDARIOS***///
@@ -303,6 +302,28 @@ void loop() {
     digitalWrite(SSRA, LOW); //apaga la etapa de alta
     digitalWrite(SSRB, LOW); //apaga la etapa de baja
     digitalWrite(SSRC, LOW); //apaga los forzadores
+  }
+
+if (TempAct > AlarmaAlta) { //si la temperatura actual es mayor que la alarma de alta
+    digitalWrite(LedAlta, HIGH);  //enciende el led
+    if (Hora - TiempoBuzzer > 100) {  //cadencia del pitido por alta temperatura
+      Pitido(); //ejecuta la funcion
+      TiempoBuzzer = Hora;  //reinicia el cronometro
+    }
+  }
+if (TempAct < AlarmaBaja) { //si la temperatura actual es menor que la alarma de baja
+    digitalWrite(LedBaja, HIGH); //enciende el led
+    if (Hora - TiempoBuzzer > 1000) { //cadencia del pitido por baja temperatura
+      Pitido(); //ejecuta la funcion
+      TiempoBuzzer = Hora;  //reinicia el cronometro
+    }
+  }
+if (TempAct >= AlarmaBaja && TempAct <= AlarmaAlta) { //si la temperatura actual es mayor que la alarma de baja Y es menor que la alarma de alta
+    digitalWrite(LedAlta, LOW); //apaga el led de alta
+    digitalWrite(LedBaja, LOW); //apaga el led de baja
+  }
+if (TempAct >= AlarmaBaja && TempAct <= AlarmaAlta && valor == LOW) { //si la temperatura actual es mayor que la alarma de baja Y es menor que la alarma de alta
+    digitalWrite(Buzzer, LOW);  //apaga el buzzer
   }
 
 
