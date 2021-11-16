@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <Wire.h>
 #define INTERRUP_PIN 2
 #define INPUT3 7
 #define INPUT4 6
@@ -85,32 +86,64 @@ void motor(int pwm, boolean direccion){
     analogWrite(INPUT3, 0);
   }
 }
+void inputData(int i){
+  while(1 < Wire.available()) // loop through all but the last
+  {
+    char c = Wire.read(); // receive byte as a character
+    Serial.print(c);         // print the character
+  }
+  int x = Wire.read();    // receive byte as an integer
+  Serial.println(x);
+}
+int terminal2(){
+  static uint16_t pwm;
+  String dato;
+  if(Serial.available()){
+    while(String(Serial.read()) != "\n"){
+      dato += String(Serial.read());
+    }
+    if (String(Serial.read()) == "\n"){
+      pwm = dato.toInt();
+    }
+  }
+  if(pwm < 0){
+    pwm = 0;
+  }
+  else if(pwm > 255){
+    pwm = 255;
+  }
+  return 255;
+}
 void setup() {
   Serial.begin(9600);
+  Wire.begin(3);
+  Wire.onReceive(inputData);
   pinMode(INPUT3, OUTPUT);
   pinMode(INPUT4, OUTPUT);
   attachInterrupt(digitalPinToInterrupt(INTERRUP_PIN), encoder, RISING);
 }
 
 void loop() {
+  motor(terminal2(), 1);
+  /*
   direccion = terminal();
   speet = setpoint(direccion, speet);
   pid = PID(speet, period);
   motor(pid, direccion_motor);
   
-  /*analogWrite(INPUT3, 220);
-  analogWrite(INPUT4, 0);*/
+  analogWrite(INPUT3, 220);
+  analogWrite(INPUT4, 0);
   if(period != period_previous){
     Serial.println(1000/period);
     period_previous = period;
   }
-  /*speet = setpoint(terminal(), speet);
+  speet = setpoint(terminal(), speet);
   analogWrite(INPUT3, map(speet, 0, 1000, 0, 255));
-  digitalWrite(INPUT4, 0);*/
+  digitalWrite(INPUT4, 0);
   if( 1000 < millis() - time){
     time = millis();
     Serial.print("speet");
     Serial.println(speet);
-  }
+  }*/
 
 }
