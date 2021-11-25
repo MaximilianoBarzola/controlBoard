@@ -1,0 +1,28 @@
+{
+	"folders": [
+		{
+			"path": "..\\SpeedControl"
+		},
+		{
+			"name": "PID_robot",
+			"path": "..\\PID_robot"
+		},
+		{
+			"name": "Scanner",
+			"path": "..\\Scanner"
+		},
+		{
+			"name": "Board_Whit_ESP32",
+			"path": "."
+		},
+		{
+			"name": "Prueba_UART",
+			"path": "..\\Prueba_UART"
+		},
+		{
+			"name": "ControlDeTemperatura",
+			"path": "..\\ControlDeTemperatura"
+		}
+	],
+	"settings": {}
+}
