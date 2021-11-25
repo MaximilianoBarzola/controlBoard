@@ -1,10 +1,14 @@
 #include <Arduino.h>
-#include <Wire.h>
+#include "RB_QMIND_PLUS.h"
+#include "RB_QMIND.h"
 #define KP 7
 #define KD 2000
 #define KI 2
 #define PERIODO 5
-
+int valor = 0;
+int valor_motor = 0;
+RB_EncoderMotor  M1(1);
+RB_EncoderMotor  M2(2);
 
 int terminal(){
     uint8_t grados;
@@ -14,8 +18,8 @@ int terminal(){
         dato = "";
         while(Serial.available() > 0){
             caracter = (char)Serial.read();
-            dato =+ caracter;
-            if(dato.length() == 2){
+            dato = dato + (String)caracter;
+            if(caracter == "\n"){
               break;
             }
         }
@@ -40,15 +44,15 @@ int PID(int setpoint, int current_value){
     }
     PID_total = PID_p + PID_d + PID_i;
     error_previous = error;
-    if(PID_total < 0){
-      PID_total = 0;
+    if(PID_total <= -500){
+      PID_total = -500;
     }
-    if(PID_total > 180){
-      PID_total = 180;
+    if(PID_total > 500){
+      PID_total = 500;
     }
   }
 
-  return map(PID_total, 0, 180, -100, 100);
+  return map(PID_total, -500, 500, -100, 100);
 }
 void motor(int speet){
     if(speet < 0){
@@ -63,40 +67,21 @@ void motor(int speet){
 }
 void setup() {
   Serial.begin(115200);
-  Wire.begin();
-  Serial.println("\nI2C Scanner");
+  M1.SetMotionMode(0);
+  M2.SetMotionMode(0);
+  pinMode(20,OUTPUT);
+  digitalWrite(20,HIGH);
+  delay(500);
 
+  delay(int(1 * 1000));
+  M1.SetMotionMode(0);
+  M2.SetMotionMode(0);
+  pinMode(20,OUTPUT);
+  digitalWrite(20,HIGH);
 }
 
 void loop() {
-  byte error, address;
-  int nDevices;
-  Serial.println("Scanning...");
-  nDevices = 0;
-  for(address = 1; address < 127; address++ ) {
-    Wire.beginTransmission(address);
-    error = Wire.endTransmission();
-    if (error == 0) {
-      Serial.print("I2C device found at address 0x");
-      if (address<16) {
-        Serial.print("0");
-      }
-      Serial.println(address,HEX);
-      nDevices++;
-    }
-    else if (error==4) {
-      Serial.print("Unknow error at address 0x");
-      if (address<16) {
-        Serial.print("0");
-      }
-      Serial.println(address,HEX);
-    }    
-  }
-  if (nDevices == 0) {
-    Serial.println("No I2C devices found\n");
-  }
-  else {
-    Serial.println("done\n");
-  }
-  delay(5000);     
+  valor = terminal();
+  valor_motor = PID(0 , valor);
+  motor(valor_motor);
 }
